@@ -21,6 +21,7 @@ io.on('connection', (socket) => {
     socket.on('chat', (message) => socket.broadcast.emit('chat', message));
 });
 
-http.listen(3000, () => {
-    console.log('Server is online at http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+    console.log(`Server is online on port ${PORT}`);
 });
