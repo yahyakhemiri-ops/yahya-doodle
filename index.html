@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doodle Duels</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --bg: #F3F4F6;
+            --surface: #FFFFFF;
+            --text: #1F2937;
+            --border: #E5E7EB;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 20px;
+        }
+
+        /* Left Side - Drawing */
+        .drawing-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        canvas {
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: crosshair;
+            background: #fff;
+            flex-grow: 1;
+            /* Prevents dragging issues */
+            touch-action: none; 
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+        button.clear-btn { background: #EF4444; }
+        
+        /* Right Side - Chat */
+        .chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-log {
+            flex-grow: 1;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input[type="text"]:focus { border-color: var(--primary); }
+        
+        .message {
+            background: var(--bg);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Drawing Board -->
+        <div class="drawing-section">
+            <div class="controls">
+                <input type="color" id="colorPicker" value="#000000" title="Choose Color">
+                <input type="range" id="brushSize" min="1" max="20" value="5" title="Brush Size">
+                <button class="clear-btn" id="clearBtn">Clear Canvas</button>
+            </div>
+            <!-- Canvas is set to a fixed internal resolution, but CSS flexes it -->
+            <canvas id="drawingCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <!-- Chat / Guessing Area -->
+        <div class="chat-section">
+            <h3 style="margin-top: 0;">Guesses & Chat</h3>
+            <div class="chat-log" id="chatLog">
+                <div class="message"><strong>System:</strong> Welcome to the game!</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Type your guess here...">
+                <button id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this right above your <script> tag to load Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <script>
+        const socket = io(); // Connect to the server
+
+        // --- Canvas Drawing Logic ---
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const colorPicker = document.getElementById('colorPicker');
+        const brushSize = document.getElementById('brushSize');
+        const clearBtn = document.getElementById('clearBtn');
+
+        let isDrawing = false;
+        let lastPos = null;
+
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const currentPos = getMousePos(e);
+            
+            const strokeData = {
+                x0: lastPos.x,
+                y0: lastPos.y,
+                x1: currentPos.x,
+                y1: currentPos.y,
+                color: colorPicker.value,
+                size: brushSize.value
+            };
+
+            // Draw locally
+            drawLine(strokeData);
+            
+            // Send to server
+            socket.emit('draw', strokeData);
+            
+            lastPos = currentPos;
+        }
+
+        function drawLine(data) {
+            ctx.lineWidth = data.size;
+            ctx.strokeStyle = data.color;
+            ctx.beginPath();
+            ctx.moveTo(data.x0, data.y0);
+            ctx.lineTo(data.x1, data.y1);
+            ctx.stroke();
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            lastPos = getMousePos(e);
+        });
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // Clear Canvas Sync
+        clearBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            socket.emit('clear');
+        });
+
+        socket.on('clear', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // Receive drawing from others
+        socket.on('draw', (data) => {
+            drawLine(data);
+        });
+
+        // --- Chat Logic Sync ---
+        const chatLog = document.getElementById('chatLog');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function appendMessage(text, sender) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message';
+            msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+            chatLog.appendChild(msgDiv);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (text) {
+                appendMessage(text, 'You');
+                socket.emit('chat', text); // Send to server
+                chatInput.value = '';
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Receive chat from others
+        socket.on('chat', (message) => {
+            appendMessage(message, 'Friend');
+        });
+    </script>
+</body>
+</html>
