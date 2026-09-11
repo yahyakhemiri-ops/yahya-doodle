@@ -1,144 +1,79 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Duels</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Draw and Guess</title>
     <style>
-        :root {
-            --primary: #4F46E5;
-            --bg: #F3F4F6;
-            --surface: #FFFFFF;
-            --text: #1F2937;
-            --border: #E5E7EB;
-        }
+        :root { --primary: #4F46E5; --bg: #F3F4F6; --surface: #FFFFFF; --border: #E5E7EB; }
+        body { margin: 0; padding: 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; position: relative; }
         
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            height: 100vh;
-            box-sizing: border-box;
-        }
+        .game-header { background: var(--surface); padding: 10px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; font-weight: bold; flex-wrap: wrap; gap: 10px; }
+        .timer { color: #EF4444; font-size: 1.2rem; }
+        .word-display { background: var(--bg); padding: 5px 15px; border-radius: 8px; border: 2px dashed var(--primary); text-align: center; flex-grow: 1; }
 
-        .container {
-            display: flex;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            gap: 20px;
-        }
+        .container { display: flex; width: 100%; flex-grow: 1; gap: 10px; overflow: hidden; }
+        .drawing-section { flex: 2; display: flex; flex-direction: column; background: var(--surface); padding: 10px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .controls { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+        
+        canvas { border: 2px solid var(--border); border-radius: 8px; cursor: crosshair; background: #fff; width: 100%; height: auto; aspect-ratio: 8/5; touch-action: none; }
+        .canvas-locked { pointer-events: none; opacity: 0.8; cursor: not-allowed; }
 
-        /* Left Side - Drawing */
-        .drawing-section {
-            flex: 2;
-            display: flex;
-            flex-direction: column;
-            background: var(--surface);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            align-items: center;
-        }
-
-        canvas {
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            cursor: crosshair;
-            background: #fff;
-            flex-grow: 1;
-            /* Prevents dragging issues */
-            touch-action: none; 
-        }
-
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: opacity 0.2s;
-        }
-
-        button:hover { opacity: 0.9; }
+        button { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         button.clear-btn { background: #EF4444; }
         
-        /* Right Side - Chat */
-        .chat-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: var(--surface);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .chat-log {
-            flex-grow: 1;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 15px;
-            padding: 10px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .chat-input-area {
-            display: flex;
-            gap: 10px;
-        }
-
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border: 2px solid var(--border);
-            border-radius: 6px;
-            outline: none;
-        }
-
-        input[type="text"]:focus { border-color: var(--primary); }
+        .chat-section { flex: 1; display: flex; flex-direction: column; background: var(--surface); padding: 10px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .chat-log { flex-grow: 1; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 10px; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #fafafa; }
+        .chat-input-area { display: flex; gap: 10px; }
+        input[type="text"] { flex-grow: 1; padding: 10px; border: 2px solid var(--border); border-radius: 6px; font-family: inherit; }
         
-        .message {
-            background: var(--bg);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.9rem;
+        .message { background: #fff; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; }
+        .sys-message { background: #FEF3C7; color: #92400E; text-align: center; font-weight: bold; border: none; }
+
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 100; backdrop-filter: blur(4px); text-align: center; padding: 20px; box-sizing: border-box; }
+        .word-choices { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+        .word-btn { padding: 15px 30px; font-size: 1.2rem; background: var(--primary); border: none; color: white; border-radius: 12px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .start-btn { background: #10B981; margin-top: 20px; display: none; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; overflow-y: auto; }
+            .drawing-section { flex: none; }
+            .chat-section { flex: none; height: 300px; }
+            .game-header { font-size: 1rem; }
+            canvas { aspect-ratio: 1/1; } 
         }
     </style>
 </head>
 <body>
+    <div id="lobbyOverlay" class="overlay">
+        <h1 id="lobbyTitle">Waiting for players...</h1>
+        <h2 id="playerCountText">Connected players: 0</h2>
+        <button id="startBtn" class="word-btn start-btn">I'm the Artist, Start Game! 🎨</button>
+    </div>
+
+    <div id="wordOverlay" class="overlay" style="display: none;">
+        <h2>You are the Artist! 🎨 Choose a word to draw:</h2>
+        <div class="word-choices" id="wordChoices"></div>
+    </div>
+
+    <div class="game-header">
+        <div id="roleDisplay">Waiting Room</div>
+        <div class="word-display" id="wordDisplay">Word: ???</div>
+        <div class="timer" id="timerDisplay">Time: 60</div>
+    </div>
+
     <div class="container">
-        <!-- Drawing Board -->
         <div class="drawing-section">
-            <div class="controls">
-                <input type="color" id="colorPicker" value="#000000" title="Choose Color">
-                <input type="range" id="brushSize" min="1" max="20" value="5" title="Brush Size">
+            <div class="controls" id="drawControls" style="display: none;">
+                <input type="color" id="colorPicker" value="#000000">
+                <input type="range" id="brushSize" min="1" max="20" value="5">
                 <button class="clear-btn" id="clearBtn">Clear Canvas</button>
             </div>
-            <!-- Canvas is set to a fixed internal resolution, but CSS flexes it -->
-            <canvas id="drawingCanvas" width="800" height="600"></canvas>
+            <canvas id="drawingCanvas" width="800" height="800" class="canvas-locked"></canvas>
         </div>
 
-        <!-- Chat / Guessing Area -->
         <div class="chat-section">
-            <h3 style="margin-top: 0;">Guesses & Chat</h3>
-            <div class="chat-log" id="chatLog">
-                <div class="message"><strong>System:</strong> Welcome to the game!</div>
-            </div>
+            <div class="chat-log" id="chatLog"></div>
             <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="Type your guess here...">
                 <button id="sendBtn">Send</button>
@@ -146,55 +81,94 @@
         </div>
     </div>
 
-    <!-- Add this right above your <script> tag to load Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
-    
     <script>
-        const socket = io(); // Connect to the server
+        const socket = io({ transports: ['websocket'], extraHeaders: { "Bypass-Tunnel-Reminder": "true" } });
+        let myRole = 'guesser';
 
-        // --- Canvas Drawing Logic ---
+        const lobbyOverlay = document.getElementById('lobbyOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const playerCountText = document.getElementById('playerCountText');
+        const lobbyTitle = document.getElementById('lobbyTitle');
+        const roleDisplay = document.getElementById('roleDisplay');
+        const wordDisplay = document.getElementById('wordDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
         const canvas = document.getElementById('drawingCanvas');
         const ctx = canvas.getContext('2d');
-        const colorPicker = document.getElementById('colorPicker');
-        const brushSize = document.getElementById('brushSize');
-        const clearBtn = document.getElementById('clearBtn');
+        const chatLog = document.getElementById('chatLog');
+        const chatInput = document.getElementById('chatInput');
+        const wordOverlay = document.getElementById('wordOverlay');
+        const choicesContainer = document.getElementById('wordChoices');
+
+        socket.on('lobbyState', (data) => {
+            if (data.gameState === "idle") {
+                lobbyOverlay.style.display = 'flex';
+                wordOverlay.style.display = 'none';
+                playerCountText.innerText = `Connected players: ${data.playerCount}`;
+                if (data.playerCount >= 2) {
+                    lobbyTitle.innerText = "Game Ready!";
+                    startBtn.style.display = 'block';
+                } else {
+                    lobbyTitle.innerText = "Waiting for players...";
+                    startBtn.style.display = 'none';
+                }
+            } else {
+                lobbyOverlay.style.display = 'none';
+            }
+        });
+
+        startBtn.onclick = () => socket.emit('requestStart');
+
+        socket.on('roleInfo', (data) => {
+            myRole = data.role;
+            if (myRole === 'artist') {
+                roleDisplay.innerText = "You: Artist 🎨";
+                canvas.classList.remove('canvas-locked');
+                document.getElementById('drawControls').style.display = 'flex';
+            } else {
+                roleDisplay.innerText = "You: Guesser 🕵️";
+                canvas.classList.add('canvas-locked'); 
+                document.getElementById('drawControls').style.display = 'none';
+                wordOverlay.style.display = 'none';
+            }
+        });
+
+        socket.on('showWordChoices', (choices) => {
+            choicesContainer.innerHTML = ''; 
+            choices.forEach(word => {
+                const btn = document.createElement('button');
+                btn.className = 'word-btn';
+                btn.innerText = word;
+                btn.onclick = () => { socket.emit('wordChosen', word); wordOverlay.style.display = 'none'; };
+                choicesContainer.appendChild(btn);
+            });
+            wordOverlay.style.display = 'flex';
+        });
+
+        socket.on('wordToDraw', (word) => wordDisplay.innerText = `Word: ${word}`);
+        socket.on('timerUpdate', (time) => timerDisplay.innerText = `Time: ${time}`);
+
+        socket.on('systemMessage', (msg) => {
+            const div = document.createElement('div');
+            div.className = 'message sys-message';
+            div.innerText = msg;
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        });
 
         let isDrawing = false;
         let lastPos = null;
-
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
 
-        function getMousePos(evt) {
+        function getCoordinates(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return {
-                x: (evt.clientX - rect.left) * scaleX,
-                y: (evt.clientY - rect.top) * scaleY
+                x: (clientX - rect.left) * (canvas.width / rect.width),
+                y: (clientY - rect.top) * (canvas.height / rect.height)
             };
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            const currentPos = getMousePos(e);
-            
-            const strokeData = {
-                x0: lastPos.x,
-                y0: lastPos.y,
-                x1: currentPos.x,
-                y1: currentPos.y,
-                color: colorPicker.value,
-                size: brushSize.value
-            };
-
-            // Draw locally
-            drawLine(strokeData);
-            
-            // Send to server
-            socket.emit('draw', strokeData);
-            
-            lastPos = currentPos;
         }
 
         function drawLine(data) {
@@ -206,59 +180,67 @@
             ctx.stroke();
         }
 
-        canvas.addEventListener('mousedown', (e) => {
+        function startPosition(e) {
+            if (myRole !== 'artist') return;
             isDrawing = true;
-            lastPos = getMousePos(e);
-        });
-        canvas.addEventListener('mouseup', () => isDrawing = false);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseout', () => isDrawing = false);
-
-        // Clear Canvas Sync
-        clearBtn.addEventListener('click', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            socket.emit('clear');
-        });
-
-        socket.on('clear', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
-
-        // Receive drawing from others
-        socket.on('draw', (data) => {
-            drawLine(data);
-        });
-
-        // --- Chat Logic Sync ---
-        const chatLog = document.getElementById('chatLog');
-        const chatInput = document.getElementById('chatInput');
-        const sendBtn = document.getElementById('sendBtn');
-
-        function appendMessage(text, sender) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message';
-            msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
-            chatLog.appendChild(msgDiv);
-            chatLog.scrollTop = chatLog.scrollHeight;
+            lastPos = getCoordinates(e);
         }
+
+        function draw(e) {
+            if (!isDrawing || myRole !== 'artist') return;
+            if (e.touches) e.preventDefault(); 
+            const currentPos = getCoordinates(e);
+            const strokeData = {
+                x0: lastPos.x, y0: lastPos.y, x1: currentPos.x, y1: currentPos.y,
+                color: document.getElementById('colorPicker').value,
+                size: document.getElementById('brushSize').value
+            };
+            drawLine(strokeData);
+            socket.emit('draw', strokeData);
+            lastPos = currentPos;
+        }
+
+        function stopPosition() {
+            isDrawing = false;
+        }
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopPosition);
+        canvas.addEventListener('mouseout', stopPosition);
+
+        canvas.addEventListener('touchstart', startPosition, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopPosition);
+        canvas.addEventListener('touchcancel', stopPosition);
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (myRole === 'artist') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                socket.emit('clear');
+            }
+        });
+
+        socket.on('draw', drawLine);
+        socket.on('clear', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
 
         function sendMessage() {
             const text = chatInput.value.trim();
             if (text) {
-                appendMessage(text, 'You');
-                socket.emit('chat', text); // Send to server
+                socket.emit('chat', text);
                 chatInput.value = '';
             }
         }
 
-        sendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        // Receive chat from others
-        socket.on('chat', (message) => {
-            appendMessage(message, 'Friend');
+        socket.on('chatMessage', (data) => {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
         });
     </script>
 </body>
